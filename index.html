@@ -1,0 +1,200 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Nimbus Application</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { background: white; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 20px; }
+        h1, h2 { color: #333; text-align: center; margin-bottom: 20px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; }
+        input[type="text"], input[type="password"], input[type="date"], select { 
+            width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; 
+            transition: border-color 0.3s; 
+        }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+        .btn { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; border: none; padding: 12px 30px; border-radius: 25px; 
+            cursor: pointer; font-size: 16px; font-weight: bold; 
+            transition: transform 0.3s, box-shadow 0.3s; 
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .error { color: #e74c3c; text-align: center; margin: 10px 0; }
+        .success { color: #27ae60; text-align: center; margin: 10px 0; }
+        .tabs { display: flex; margin-bottom: 20px; }
+        .tab { flex: 1; padding: 15px; background: #f8f9fa; border: none; cursor: pointer; 
+               border-radius: 10px 10px 0 0; font-weight: bold; transition: all 0.3s; }
+        .tab.active { background: white; color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; font-weight: bold; }
+        tr:hover { background: #f8f9fa; }
+        .nav-buttons { text-align: center; margin-top: 20px; }
+        .nav-buttons a { margin: 0 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🚀 Nimbus Application</h1>
+            
+            <%-- Check if user is logged in --%>
+            <% String username = (String) session.getAttribute("username"); %>
+            
+            <% if (username == null) { %>
+                <%-- Login Form --%>
+                <h2>🔐 User Login</h2>
+                <% if (request.getAttribute("error") != null) { %>
+                    <div class="error"><%= request.getAttribute("error") %></div>
+                <% } %>
+                <form action="NimbusServlet" method="post">
+                    <input type="hidden" name="action" value="login">
+                    <div class="form-group">
+                        <label>Username:</label>
+                        <input type="text" name="username" required placeholder="Enter username">
+                    </div>
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" name="password" required placeholder="Enter password">
+                    </div>
+                    <div class="form-group" style="text-align: center;">
+                        <button type="submit" class="btn">Login</button>
+                    </div>
+                </form>
+                <p style="text-align: center; color: #666; margin-top: 15px;">
+                    Demo: Use username "admin" and password "admin123"
+                </p>
+            <% } else { %>
+                <%-- Logged in user view --%>
+                <h2>👋 Welcome, <%= username %>!</h2>
+                
+                <%-- Success/Error Messages --%>
+                <% if (request.getAttribute("success") != null) { %>
+                    <div class="success"><%= request.getAttribute("success") %></div>
+                <% } %>
+                <% if (request.getAttribute("error") != null) { %>
+                    <div class="error"><%= request.getAttribute("error") %></div>
+                <% } %>
+                
+                <%-- Tab Navigation --%>
+                <div class="tabs">
+                    <button class="tab active" onclick="showTab('employees')">👥 Employees</button>
+                    <button class="tab" onclick="showTab('attendance')">📚 Attendance</button>
+                </div>
+                
+                <%-- Employees Tab --%>
+                <div id="employees" class="tab-content active">
+                    <h3>Employee Records</h3>
+                    
+                    <%-- Search Form --%>
+                    <form action="NimbusServlet" method="post" style="margin-bottom: 20px;">
+                        <input type="hidden" name="action" value="searchEmployee">
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" name="empId" placeholder="Enter Employee ID" style="flex: 1;">
+                            <button type="submit" class="btn">Search</button>
+                        </div>
+                    </form>
+                    
+                    <%-- Employee Table --%>
+                    <table>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Name</th>
+                            <th>Salary</th>
+                        </tr>
+                        <%
+                            try {
+                                Class.forName("com.mysql.cj.jdbc.Driver");
+                                Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/testdb", "root", "");
+                                Statement stmt = conn.createStatement();
+                                ResultSet rs = stmt.executeQuery("SELECT * FROM Employee");
+                                while(rs.next()) {
+                        %>
+                        <tr>
+                            <td><%= rs.getInt("EmpID") %></td>
+                            <td><%= rs.getString("Name") %></td>
+                            <td>$<%= rs.getDouble("Salary") %></td>
+                        </tr>
+                        <%
+                                }
+                                conn.close();
+                            } catch(Exception e) {
+                                out.println("<tr><td colspan='3' style='text-align: center; color: red;'>Database connection failed. Please ensure MySQL is running.</td></tr>");
+                            }
+                        %>
+                    </table>
+                </div>
+                
+                <%-- Attendance Tab --%>
+                <div id="attendance" class="tab-content">
+                    <h3>Mark Student Attendance</h3>
+                    <form action="NimbusServlet" method="post">
+                        <input type="hidden" name="action" value="attendance">
+                        <div class="form-group">
+                            <label>Student ID:</label>
+                            <input type="text" name="studentId" required placeholder="Enter student ID">
+                        </div>
+                        <div class="form-group">
+                            <label>Student Name:</label>
+                            <input type="text" name="studentName" required placeholder="Enter student name">
+                        </div>
+                        <div class="form-group">
+                            <label>Date:</label>
+                            <input type="date" name="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Status:</label>
+                            <select name="status" required>
+                                <option value="">Select Status</option>
+                                <option value="Present">✅ Present</option>
+                                <option value="Absent">❌ Absent</option>
+                                <option value="Late">⏰ Late</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="text-align: center;">
+                            <button type="submit" class="btn">Submit Attendance</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <%-- Logout Button --%>
+                <div class="nav-buttons">
+                    <a href="NimbusServlet?action=logout" class="btn">🚪 Logout</a>
+                </div>
+            <% } %>
+        </div>
+    </div>
+    
+    <script>
+        function showTab(tabName) {
+            // Hide all tabs
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Remove active class from all tab buttons
+            const tabButtons = document.querySelectorAll('.tab');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // Set today's date as default
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.querySelector('input[type="date"]');
+            if (dateInput) {
+                dateInput.valueAsDate = new Date();
+            }
+        });
+    </script>
+</body>
+</html>
